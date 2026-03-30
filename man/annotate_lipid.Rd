@@ -55,7 +55,8 @@ notation per Liebisch et al. (2020).
 }
 \examples{
 lipids <- c("PC 16:0/18:1", "PC O-18:1/20:4", "Cer d18:1/16:0",
-            "TG(16:0/18:1/18:1)", "Lyso PE 18:1(d7)")
+            "TG(16:0/18:1/18:1)", "Lyso PE 18:1(d7)",
+            "plasmenylPE (16:0/18:1)", "Sa1P d 18:0")
 
 annotate_lipid(lipids)
 annotate_lipid(lipids, detail = "standard")

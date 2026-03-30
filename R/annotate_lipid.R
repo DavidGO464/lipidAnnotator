@@ -100,7 +100,8 @@
 #'
 #' @examples
 #' lipids <- c("PC 16:0/18:1", "PC O-18:1/20:4", "Cer d18:1/16:0",
-#'             "TG(16:0/18:1/18:1)", "Lyso PE 18:1(d7)")
+#'             "TG(16:0/18:1/18:1)", "Lyso PE 18:1(d7)",
+#'             "plasmenylPE (16:0/18:1)", "Sa1P d 18:0")
 #'
 #' annotate_lipid(lipids)
 #' annotate_lipid(lipids, detail = "standard")
@@ -179,61 +180,75 @@ annotate_lipid <- function(molecules,
   }
 
   rbind(
+    # Fatty Acyls
     cls("FA",      "FA", "Fatty Acyls", "FA0101", "Fatty acids",                  1),
     cls("FAHFA",   "FA", "Fatty Acyls", "FA0701", "Fatty acid estolides",         2),
     cls("FAL",     "FA", "Fatty Acyls", "FA0601", "Fatty aldehydes",              1),
     cls("FOH",     "FA", "Fatty Acyls", "FA0501", "Fatty alcohols",               1),
     cls("CAR",     "FA", "Fatty Acyls", "FA0701", "Acylcarnitines",               1),
     cls("NAE",     "FA", "Fatty Acyls", "FA0801", "N-Acylethanolamines",          1),
-    cls("MG",      "GL", "Glycerolipids", "GL0101", "Monoradylglycerols",         1),
-    cls("DG",      "GL", "Glycerolipids", "GL0201", "Diradylglycerols",           2),
-    cls("TG",      "GL", "Glycerolipids", "GL0301", "Triradylglycerols",          3),
+    # Glycerolipids
+    cls("MG",      "GL", "Glycerolipids", "GL0101", "Monoradylglycerols",            1),
+    cls("DG",      "GL", "Glycerolipids", "GL0201", "Diradylglycerols",              2),
+    cls("TG",      "GL", "Glycerolipids", "GL0301", "Triradylglycerols",             3),
     cls("MGDG",    "GL", "Glycerolipids", "GL0501", "Monogalactosyldiacylglycerols", 2),
     cls("DGDG",    "GL", "Glycerolipids", "GL0502", "Digalactosyldiacylglycerols",   2),
-    cls("PA",      "GP", "Glycerophospholipids", "GP1001", "Phosphatidic acids",                 2, "phosphate"),
-    cls("LPA",     "GP", "Glycerophospholipids", "GP1002", "Lysophosphatidic acids",             1, "phosphate"),
-    cls("PC",      "GP", "Glycerophospholipids", "GP0101", "Phosphatidylcholines",               2, "choline"),
-    cls("LPC",     "GP", "Glycerophospholipids", "GP0105", "Lysophosphatidylcholines",           1, "choline"),
-    cls("PE",      "GP", "Glycerophospholipids", "GP0201", "Phosphatidylethanolamines",          2, "ethanolamine"),
-    cls("LPE",     "GP", "Glycerophospholipids", "GP0205", "Lysophosphatidylethanolamines",      1, "ethanolamine"),
-    cls("PG",      "GP", "Glycerophospholipids", "GP0401", "Phosphatidylglycerols",              2, "glycerol"),
-    cls("LPG",     "GP", "Glycerophospholipids", "GP0405", "Lysophosphatidylglycerols",          1, "glycerol"),
-    cls("PI",      "GP", "Glycerophospholipids", "GP0601", "Phosphatidylinositols",              2, "inositol"),
-    cls("LPI",     "GP", "Glycerophospholipids", "GP0605", "Lysophosphatidylinositols",          1, "inositol"),
-    cls("PS",      "GP", "Glycerophospholipids", "GP0301", "Phosphatidylserines",                2, "serine"),
-    cls("LPS",     "GP", "Glycerophospholipids", "GP0305", "Lysophosphatidylserines",            1, "serine"),
-    cls("PIP",     "GP", "Glycerophospholipids", "GP0701", "Phosphoinositolphosphates",          2, "inositolP"),
-    cls("PIP2",    "GP", "Glycerophospholipids", "GP0702", "Bisphosphoinositolphosphates",       2, "inositolPP"),
-    cls("PIP3",    "GP", "Glycerophospholipids", "GP0703", "Trisphosphoinositolphosphates",      2, "inositolPPP"),
-    cls("CL",      "GP", "Glycerophospholipids", "GP1201", "Cardiolipins",                      4, "glycerophosphate"),
-    cls("BMP",     "GP", "Glycerophospholipids", "GP0401", "Bis(monoacylglycero)phosphates",     2, "glycerol"),
-    cls("LBPA",    "GP", "Glycerophospholipids", "GP0401", "Lysobiophosphatidic acids",          2, "glycerol"),
-    cls("PEtOH",   "GP", "Glycerophospholipids", "GP0210", "Phosphatidylethanol",                2, "ethanol"),
-    cls("PThr",    "GP", "Glycerophospholipids", "GP0901", "Phosphatidylthreonines",             2, "threonine"),
-    cls("Cer",     "SP", "Sphingolipids", "SP0201", "Ceramides",                  2, NA_character_, TRUE),
-    cls("SM",      "SP", "Sphingolipids", "SP0301", "Sphingomyelins",             2, "phosphocholine", TRUE),
-    cls("HexCer",  "SP", "Sphingolipids", "SP0501", "Hexosylceramides",           2, "hexose",      TRUE),
-    cls("Hex2Cer", "SP", "Sphingolipids", "SP0601", "Dihexosylceramides",         2, "hexose2",     TRUE),
-    cls("GlcCer",  "SP", "Sphingolipids", "SP0501", "Glucosylceramides",          2, "glucose",     TRUE),
-    cls("GalCer",  "SP", "Sphingolipids", "SP0501", "Galactosylceramides",        2, "galactose",   TRUE),
-    cls("LacCer",  "SP", "Sphingolipids", "SP0601", "Lactosylceramides",          2, "lactose",     TRUE),
-    cls("GM3",     "SP", "Sphingolipids", "SP0603", "Ganglioside GM3",            2, "ganglioside", TRUE),
-    cls("GM2",     "SP", "Sphingolipids", "SP0604", "Ganglioside GM2",            2, "ganglioside", TRUE),
-    cls("GM1",     "SP", "Sphingolipids", "SP0605", "Ganglioside GM1",            2, "ganglioside", TRUE),
-    cls("GD1",     "SP", "Sphingolipids", "SP0606", "Ganglioside GD1",            2, "ganglioside", TRUE),
-    cls("GD3",     "SP", "Sphingolipids", "SP0607", "Ganglioside GD3",            2, "ganglioside", TRUE),
-    cls("GT3",     "SP", "Sphingolipids", "SP0608", "Ganglioside GT3",            2, "ganglioside", TRUE),
-    cls("Sph",     "SP", "Sphingolipids", "SP0101", "Sphingoid bases",            1, NA_character_, TRUE),
-    cls("S1P",     "SP", "Sphingolipids", "SP0105", "Sphingoid base-1-phosphates",1, "phosphate",   TRUE),
-    cls("PE-Cer",  "SP", "Sphingolipids", "SP0201", "PE-ceramides",               2, "ethanolamine", TRUE),
-    cls("PI-Cer",  "SP", "Sphingolipids", "SP0201", "PI-ceramides",               2, "inositol",    TRUE),
-    cls("PA-Cer",  "SP", "Sphingolipids", "SP0201", "PA-ceramides",               2, "phosphate",   TRUE),
-    cls("deoxyCer","SP", "Sphingolipids", "SP0202", "1-Deoxy ceramides",          2, NA_character_, TRUE),
-    cls("Chol",    "ST", "Sterol Lipids", "ST0101", "Cholesterol",                0),
-    cls("CE",      "ST", "Sterol Lipids", "ST0102", "Cholesterol esters",         1, "cholesterol"),
-    cls("FC",      "ST", "Sterol Lipids", "ST0101", "Free cholesterol",           0),
-    cls("BA",      "ST", "Sterol Lipids", "ST0401", "Bile acids",                 0),
-    cls("CoQ",     "PR", "Prenol Lipids", "PR0603", "Ubiquinones",                0)
+    # Glycerophospholipids
+    cls("PA",          "GP", "Glycerophospholipids", "GP1001", "Phosphatidic acids",                 2, "phosphate"),
+    cls("LPA",         "GP", "Glycerophospholipids", "GP1002", "Lysophosphatidic acids",             1, "phosphate"),
+    cls("PC",          "GP", "Glycerophospholipids", "GP0101", "Phosphatidylcholines",               2, "choline"),
+    cls("LPC",         "GP", "Glycerophospholipids", "GP0105", "Lysophosphatidylcholines",           1, "choline"),
+    cls("PE",          "GP", "Glycerophospholipids", "GP0201", "Phosphatidylethanolamines",          2, "ethanolamine"),
+    cls("LPE",         "GP", "Glycerophospholipids", "GP0205", "Lysophosphatidylethanolamines",      1, "ethanolamine"),
+    cls("PG",          "GP", "Glycerophospholipids", "GP0401", "Phosphatidylglycerols",              2, "glycerol"),
+    cls("LPG",         "GP", "Glycerophospholipids", "GP0405", "Lysophosphatidylglycerols",          1, "glycerol"),
+    cls("PI",          "GP", "Glycerophospholipids", "GP0601", "Phosphatidylinositols",              2, "inositol"),
+    cls("LPI",         "GP", "Glycerophospholipids", "GP0605", "Lysophosphatidylinositols",          1, "inositol"),
+    cls("PS",          "GP", "Glycerophospholipids", "GP0301", "Phosphatidylserines",                2, "serine"),
+    cls("LPS",         "GP", "Glycerophospholipids", "GP0305", "Lysophosphatidylserines",            1, "serine"),
+    cls("PIP",         "GP", "Glycerophospholipids", "GP0701", "Phosphoinositolphosphates",          2, "inositolP"),
+    cls("PIP2",        "GP", "Glycerophospholipids", "GP0702", "Bisphosphoinositolphosphates",       2, "inositolPP"),
+    cls("PIP3",        "GP", "Glycerophospholipids", "GP0703", "Trisphosphoinositolphosphates",      2, "inositolPPP"),
+    cls("CL",          "GP", "Glycerophospholipids", "GP1201", "Cardiolipins",                       4, "glycerophosphate"),
+    cls("BMP",         "GP", "Glycerophospholipids", "GP0401", "Bis(monoacylglycero)phosphates",     2, "glycerol"),
+    cls("LBPA",        "GP", "Glycerophospholipids", "GP0401", "Lysobiophosphatidic acids",          2, "glycerol"),
+    cls("PEtOH",       "GP", "Glycerophospholipids", "GP0210", "Phosphatidylethanol",                2, "ethanol"),
+    cls("PThr",        "GP", "Glycerophospholipids", "GP0901", "Phosphatidylthreonines",             2, "threonine"),
+    # FIX 1: Trivial plasmalogen names — marked as plasmalogen in parser
+    cls("plasmenylPC", "GP", "Glycerophospholipids", "GP0101", "Phosphatidylcholines",               2, "choline"),
+    cls("plasmenylPE", "GP", "Glycerophospholipids", "GP0201", "Phosphatidylethanolamines",          2, "ethanolamine"),
+    # Sphingolipids
+    cls("Cer",     "SP", "Sphingolipids", "SP0201", "Ceramides",                   2, NA_character_, TRUE),
+    cls("SM",      "SP", "Sphingolipids", "SP0301", "Sphingomyelins",              2, "phosphocholine", TRUE),
+    cls("HexCer",  "SP", "Sphingolipids", "SP0501", "Hexosylceramides",            2, "hexose",      TRUE),
+    cls("Hex2Cer", "SP", "Sphingolipids", "SP0601", "Dihexosylceramides",          2, "hexose2",     TRUE),
+    cls("GlcCer",  "SP", "Sphingolipids", "SP0501", "Glucosylceramides",           2, "glucose",     TRUE),
+    cls("GalCer",  "SP", "Sphingolipids", "SP0501", "Galactosylceramides",         2, "galactose",   TRUE),
+    cls("LacCer",  "SP", "Sphingolipids", "SP0601", "Lactosylceramides",           2, "lactose",     TRUE),
+    cls("GM3",     "SP", "Sphingolipids", "SP0603", "Ganglioside GM3",             2, "ganglioside", TRUE),
+    cls("GM2",     "SP", "Sphingolipids", "SP0604", "Ganglioside GM2",             2, "ganglioside", TRUE),
+    cls("GM1",     "SP", "Sphingolipids", "SP0605", "Ganglioside GM1",             2, "ganglioside", TRUE),
+    cls("GD1",     "SP", "Sphingolipids", "SP0606", "Ganglioside GD1",             2, "ganglioside", TRUE),
+    cls("GD3",     "SP", "Sphingolipids", "SP0607", "Ganglioside GD3",             2, "ganglioside", TRUE),
+    cls("GT3",     "SP", "Sphingolipids", "SP0608", "Ganglioside GT3",             2, "ganglioside", TRUE),
+    cls("Sph",     "SP", "Sphingolipids", "SP0101", "Sphingoid bases",             1, NA_character_, TRUE),
+    cls("S1P",     "SP", "Sphingolipids", "SP0105", "Sphingoid base-1-phosphates", 1, "phosphate",   TRUE),
+    # FIX 2: Trivial sphingoid base names from legacy software
+    cls("Sa",      "SP", "Sphingolipids", "SP0101", "Sphingoid bases",             1, NA_character_, TRUE),
+    cls("So",      "SP", "Sphingolipids", "SP0101", "Sphingoid bases",             1, NA_character_, TRUE),
+    cls("Sa1P",    "SP", "Sphingolipids", "SP0105", "Sphingoid base-1-phosphates", 1, "phosphate",   TRUE),
+    cls("So1P",    "SP", "Sphingolipids", "SP0105", "Sphingoid base-1-phosphates", 1, "phosphate",   TRUE),
+    cls("PE-Cer",  "SP", "Sphingolipids", "SP0201", "PE-ceramides",                2, "ethanolamine", TRUE),
+    cls("PI-Cer",  "SP", "Sphingolipids", "SP0201", "PI-ceramides",                2, "inositol",    TRUE),
+    cls("PA-Cer",  "SP", "Sphingolipids", "SP0201", "PA-ceramides",                2, "phosphate",   TRUE),
+    cls("deoxyCer","SP", "Sphingolipids", "SP0202", "1-Deoxy ceramides",           2, NA_character_, TRUE),
+    # Sterol Lipids
+    cls("Chol",    "ST", "Sterol Lipids", "ST0101", "Cholesterol",                 0),
+    cls("CE",      "ST", "Sterol Lipids", "ST0102", "Cholesterol esters",          1, "cholesterol"),
+    cls("FC",      "ST", "Sterol Lipids", "ST0101", "Free cholesterol",            0),
+    cls("BA",      "ST", "Sterol Lipids", "ST0401", "Bile acids",                  0),
+    # Prenol Lipids
+    cls("CoQ",     "PR", "Prenol Lipids", "PR0603", "Ubiquinones",                 0)
   )
 })
 
@@ -287,6 +302,10 @@ annotate_lipid <- function(molecules,
   # Normalize: "Lyso PE" -> "LPE", number-first -> class-first,
   # C-prefix on chains, spaces between chains -> slash
   x <- gsub("(?i)lyso\\s*([A-Z])", "L\\1", x, perl = TRUE)
+  # Fix: "Sa1P d 18:0" -> "Sa1P d18:0" (collapse space between sphingoid prefix and chain)
+  x <- gsub("\\s+([dmt])\\s+(\\d+:\\d+)", " \\1\\2", x, perl = TRUE)
+  # C-prefix on chains, spaces between chains -> slash
+  x <- gsub("(?i)lyso\\s*([A-Z])", "L\\1", x, perl = TRUE)
   if (grepl("^\\d+:\\d+", x))
     x <- sub("^([^[:blank:]]+)[[:blank:]]+(.+)$", "\\2 \\1", x)
   x <- gsub("(?<=[(/\\s,]|^)C(\\d+:\\d+)", "\\1", x, perl = TRUE)
@@ -325,6 +344,13 @@ annotate_lipid <- function(molecules,
   out$class_stub <- class_raw
   out$is_lyso    <- grepl("^L[A-Z]", class_raw) && !class_raw %in% c("LacCer")
 
+  # FIX 3: Trivial plasmalogen names -> mark as plasmalogen (P- ether by definition)
+  if (class_raw %in% c("plasmenylPC", "plasmenylPE")) {
+    out$is_ether       <- TRUE
+    out$is_plasmalogen <- TRUE
+    out$ether_link     <- "P"
+  }
+
   # Parse chains
   chains_str <- trimws(chains_raw)
   if (nchar(chains_str) == 0) {
@@ -335,14 +361,24 @@ annotate_lipid <- function(molecules,
   # Ether linkage prefix: O- (alkyl) or P- (alkenyl/plasmalogen)
   eth_m <- regmatches(chains_str, regexpr("^([OP])-", chains_str, perl = TRUE))
   if (length(eth_m) > 0 && nchar(eth_m) > 0) {
-    out$ether_link <- substr(eth_m, 1, 1); out$is_ether <- TRUE
+    out$ether_link     <- substr(eth_m, 1, 1)
+    out$is_ether       <- TRUE
     out$is_plasmalogen <- substr(eth_m, 1, 1) == "P"
-    chains_str <- sub("^[OP]-", "", chains_str)
+    chains_str         <- sub("^[OP]-", "", chains_str)
   }
 
   chain_parts <- trimws(strsplit(chains_str, "/")[[1]])
   chain_parts <- chain_parts[seq_len(min(length(chain_parts), 4))]
+
+  # FIX 4: Remove empty chain positions (0:0) — present in DG/TG from some software
+  # e.g. "DG (14:0/16:0/0:0)" -> only count 14:0 and 16:0
+  chain_parts <- chain_parts[chain_parts != "0:0"]
   n <- length(chain_parts)
+
+  if (n == 0) {
+    out$not_matched <- TRUE
+    return(out)
+  }
 
   # Annotation level: species (sum composition) vs molecular_species (chain-resolved)
   out$is_ambig         <- (n == 1 && !out$is_lyso)
@@ -383,7 +419,8 @@ annotate_lipid <- function(molecules,
 # =============================================================================
 # INDIVIDUAL CHAIN PARSER
 # Handles: "18:1", "d18:1", "m18:0", "t18:0", "18:1(9Z)", "18:1(d7)",
-#          "22:6(4Z,7Z,...)", "9-O-16:0" (FAHFA ester position), "0:0"
+#          "22:6(4Z,7Z,...)", "9-O-16:0" (FAHFA ester position)
+# Note: "0:0" empty positions are filtered before reaching this function
 # =============================================================================
 
 .parse_lm_chain <- function(s) {
