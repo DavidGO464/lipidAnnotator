@@ -4,20 +4,20 @@
 [![LIPID MAPS](https://img.shields.io/badge/nomenclature-LIPID%20MAPS%202020-green)](https://www.lipidmaps.org)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19325471.svg)](https://doi.org/10.5281/zenodo.19325471)
 
-> Universal lipid name parser and annotator for R, with canonical LIPID MAPS 
+> Universal lipid name parser and annotator for R, with canonical LIPID MAPS
 > classification and shorthand notation per Liebisch et al. 2020.
 
 ---
 
 ## Overview
 
-Lipid nomenclature in mass spectrometry-based lipidomics is inconsistent across 
-software platforms (LipidSearch, MS-DIAL, LipidView). **lipidAnnotator** provides 
-a single function — `annotate_lipid()` — that parses any lipid name format and 
-returns a structured data frame with LIPID MAPS canonical classification, 
+Lipid nomenclature in mass spectrometry-based lipidomics is inconsistent across
+software platforms (LipidSearch, MS-DIAL, LipidView). **lipidAnnotator** provides
+a single function — `annotate_lipid()` — that parses any lipid name format and
+returns a structured data frame with LIPID MAPS canonical classification,
 chain-level metadata, and optional shorthand notation.
 
-### Supported formats
+### Supported input formats
 
 | Input | Class |
 |---|---|
@@ -85,6 +85,24 @@ annotate_lipid(lipids, detail = "full", shorthand = TRUE)
 
 ---
 
+## Supported lipid classes
+
+Nomenclature follows [LIPID MAPS](https://www.lipidmaps.org/) conventions
+(Liebisch et al. 2020; Conroy et al. 2024). Ether linkages (O-/P-),
+plasmalogens, deuterium-labeled ISTDs, and sphingoid base prefixes (d/m/t)
+are detected automatically across all supported classes.
+
+| Category | Classes |
+|---|---|
+| Fatty Acyls (FA) | FA, FAHFA, FAL, FOH, CAR, NAE |
+| Glycerolipids (GL) | MG, DG, TG, MGDG, DGDG |
+| Glycerophospholipids (GP) | PA/LPA, PC/LPC, PE/LPE, PG/LPG, PI/LPI, PS/LPS, PIP/PIP2/PIP3, CL, BMP, LBPA, PEtOH, PThr, plasmenylPC/PE |
+| Sphingolipids (SP) | Cer, SM, HexCer, Hex2Cer, GlcCer, GalCer, LacCer, GM1/2/3, GD1/GD3, GT3, Sph, S1P, Sa, So, Sa1P, So1P, PE-Cer, PI-Cer, PA-Cer, deoxyCer |
+| Sterol Lipids (ST) | Chol, CE, FC, BA |
+| Prenol Lipids (PR) | CoQ |
+
+---
+
 ## Integration with lipidomics pipelines
 ```r
 # Annotate features from a limma result
@@ -110,4 +128,4 @@ results_annotated <- merge(
 
 ## License
 
-MIT © 
+MIT ©
