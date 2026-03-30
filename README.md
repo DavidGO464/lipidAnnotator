@@ -110,4 +110,4 @@ results_annotated <- merge(
 
 ## License
 
-MIT © David Guardamino Ojeda, MD
+MIT © 
