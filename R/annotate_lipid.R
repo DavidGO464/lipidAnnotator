@@ -1,15 +1,15 @@
 # =============================================================================
 # annotate_lipid.R
 #
-# Parser universal de nombres de lípidos con clasificación LIPID MAPS canónica
-# y generación opcional de shorthand notation.
+# Universal lipid name parser with canonical LIPID MAPS classification
+# and optional shorthand notation output.
 #
-# Referencias:
+# References:
 #   Liebisch G et al. J Lipid Res. 2020;61(12):1539-1555. PMID: 33037133
 #   Conroy MJ et al. Nucleic Acids Res. 2024;52(D1):D1677-D1682. PMID: 37855672
 #   Fahy E et al. J Lipid Res. 2009;50 Suppl:S9-14. PMID: 19098281
 #
-# Uso:
+# Usage:
 #   df <- annotate_lipid(lipid_names)                          # compact (default)
 #   df <- annotate_lipid(lipid_names, detail = "standard")
 #   df <- annotate_lipid(lipid_names, detail = "full")
@@ -19,86 +19,94 @@
 
 
 # =============================================================================
-# COLUMNAS POR NIVEL DE DETALLE
+# OUTPUT COLUMNS BY DETAIL LEVEL
 # =============================================================================
 
 .LM_COLS <- list(
 
   compact = c(
-    "Molecule",
-    "Class",
-    "is_lyso",
-    "is_ambig",
-    "not_matched",
+    "Molecule", "Class", "is_lyso", "is_ambig", "not_matched",
     "chain1", "chain2", "chain3", "chain4",
-    "l_1", "s_1",
-    "l_2", "s_2",
-    "l_3", "s_3",
-    "l_4", "s_4",
-    "total_cl",
-    "total_cs",
-    "n_chains"
+    "l_1", "s_1", "l_2", "s_2", "l_3", "s_3", "l_4", "s_4",
+    "total_cl", "total_cs", "n_chains"
   ),
 
   standard = c(
-    "Molecule",
-    "Class",
-    "lm_category",
-    "lm_class_id",
-    "annotation_level",
-    "is_lyso",
-    "is_ambig",
-    "is_ether",
-    "is_plasmalogen",
-    "is_istd",
-    "not_matched",
-    "sphingoid_prefix",
+    "Molecule", "Class", "lm_category", "lm_class_id", "annotation_level",
+    "is_lyso", "is_ambig", "is_ether", "is_plasmalogen", "is_istd",
+    "not_matched", "sphingoid_prefix",
     "chain1", "chain2", "chain3", "chain4",
-    "l_1", "s_1",
-    "l_2", "s_2",
-    "l_3", "s_3",
-    "l_4", "s_4",
-    "total_cl",
-    "total_cs",
-    "n_chains"
+    "l_1", "s_1", "l_2", "s_2", "l_3", "s_3", "l_4", "s_4",
+    "total_cl", "total_cs", "n_chains"
   ),
 
   full = c(
-    "Molecule",
-    "clean_name",
-    "Class",
-    "class_stub",
-    "lm_category",
-    "lm_category_name",
-    "lm_class_id",
-    "lm_class_name",
-    "headgroup",
-    "annotation_level",
-    "is_lyso",
-    "is_ambig",
-    "is_ether",
-    "is_plasmalogen",
-    "is_istd",
-    "not_matched",
-    "ether_link",
-    "sphingoid_prefix",
-    "hydroxyl_base",
+    "Molecule", "clean_name", "Class", "class_stub",
+    "lm_category", "lm_category_name", "lm_class_id", "lm_class_name",
+    "headgroup", "annotation_level",
+    "is_lyso", "is_ambig", "is_ether", "is_plasmalogen", "is_istd",
+    "not_matched", "ether_link", "sphingoid_prefix", "hydroxyl_base",
     "chain1", "chain2", "chain3", "chain4",
-    "l_1", "s_1",
-    "l_2", "s_2",
-    "l_3", "s_3",
-    "l_4", "s_4",
-    "total_cl",
-    "total_cs",
-    "n_chains"
+    "l_1", "s_1", "l_2", "s_2", "l_3", "s_3", "l_4", "s_4",
+    "total_cl", "total_cs", "n_chains"
   )
 )
 
 
 # =============================================================================
-# FUNCIÓN PRINCIPAL
+# MAIN FUNCTION
 # =============================================================================
 
+#' Annotate lipid names with LIPID MAPS classification
+#'
+#' Parses lipid names in any format used by lipidomics software (LipidSearch,
+#' MS-DIAL, LipidView) and returns a structured data frame with LIPID MAPS
+#' canonical classification, chain-level metadata, and optional shorthand
+#' notation per Liebisch et al. (2020).
+#'
+#' @param molecules Character vector of lipid names to parse.
+#' @param detail Level of detail in the output table:
+#'   \describe{
+#'     \item{\code{"compact"}}{Class, chains, totals. Equivalent to lipidR. Default.}
+#'     \item{\code{"standard"}}{Adds LIPID MAPS category, class ID, and structural flags.}
+#'     \item{\code{"full"}}{All columns. Recommended for joining with LMSD.}
+#'   }
+#' @param shorthand Logical. If \code{TRUE}, adds \code{shorthand_lm} column
+#'   with canonical shorthand per Liebisch et al. (2020). Default \code{FALSE}.
+#' @param sn_confirmed Logical. If \code{TRUE}, marks chains as sn-confirmed
+#'   in shorthand output. Requires MS/MS-directed analysis. Default \code{FALSE}.
+#' @param lyso_explicit Logical. If \code{TRUE}, lyso-lipids include the empty
+#'   sn-position: \code{LPC(18:1/0:0)} instead of \code{LPC(18:1)}.
+#'   Default \code{FALSE}.
+#' @param no_match How to handle unparsed names: \code{"warn"} (default),
+#'   \code{"remove"}, or \code{"ignore"}.
+#' @param sphingoid_default Default sphingoid base prefix for sphingolipids
+#'   without explicit prefix. \code{"d"} = dihydroxy (mammalian default).
+#'   Use \code{NA} for non-mammalian data.
+#'
+#' @return A data frame with one row per unique lipid name. Key columns include
+#'   \code{Class}, \code{lm_category}, \code{lm_class_id}, \code{annotation_level},
+#'   \code{is_ether}, \code{is_plasmalogen}, \code{is_istd}, \code{sphingoid_prefix},
+#'   \code{total_cl}, \code{total_cs}, and optionally \code{shorthand_lm}.
+#'
+#' @references
+#' Liebisch G et al. Update on LIPID MAPS classification, nomenclature, and
+#' shorthand notation for MS-derived lipid structures.
+#' \emph{J Lipid Res.} 2020;61(12):1539-1555. \doi{10.1194/jlr.S120001025}
+#'
+#' Conroy MJ et al. LIPID MAPS: update to databases and tools for the
+#' lipidomics community. \emph{Nucleic Acids Res.} 2024;52(D1):D1677-D1682.
+#' \doi{10.1093/nar/gkad896}
+#'
+#' @examples
+#' lipids <- c("PC 16:0/18:1", "PC O-18:1/20:4", "Cer d18:1/16:0",
+#'             "TG(16:0/18:1/18:1)", "Lyso PE 18:1(d7)")
+#'
+#' annotate_lipid(lipids)
+#' annotate_lipid(lipids, detail = "standard")
+#' annotate_lipid(lipids, detail = "full", shorthand = TRUE)
+#'
+#' @export
 annotate_lipid <- function(molecules,
                            detail            = c("compact", "standard", "full"),
                            shorthand         = FALSE,
@@ -144,13 +152,13 @@ annotate_lipid <- function(molecules,
 
   cols <- .LM_COLS[[detail]]
   if (shorthand) cols <- c(cols, "shorthand_lm")
-
   df[, cols, drop = FALSE]
 }
 
 
 # =============================================================================
-# TABLA MAESTRA DE CLASES LIPID MAPS
+# LIPID MAPS CLASS LOOKUP TABLE
+# Liebisch et al. 2020 + Conroy et al. 2024
 # =============================================================================
 
 .LM_CLASS_TABLE <- local({
@@ -231,7 +239,7 @@ annotate_lipid <- function(molecules,
 
 
 # =============================================================================
-# PARSER INTERNO
+# INTERNAL PARSER — single lipid
 # =============================================================================
 
 .parse_lm_single <- function(mol, sphingoid_default = "d") {
@@ -255,7 +263,7 @@ annotate_lipid <- function(molecules,
     total_cl = NA_real_, total_cs = NA_real_, n_chains = NA_real_
   )
 
-  # ISTD: (d7), -d7 son deuterio; d18:1 NO (prefijo sphingoid)
+  # ISTD detection: (d7) or -d7 = deuterium label; d18:1 is NOT an ISTD (sphingoid prefix)
   if (grepl("\\(d\\d+\\)|-d\\d+(?!:)|\\(\\d+,\\d+-d\\d+\\)", x, perl = TRUE)) {
     out$is_istd <- TRUE
   }
@@ -265,6 +273,7 @@ annotate_lipid <- function(molecules,
   x <- sub("\\s+ID\\d+$", "", x)
   x <- sub("15-MHDA", "17:0", x)
 
+  # Special case: 15-MHDA trivial name converts to FA 17:0
   if (trimws(x) == "17:0") {
     out$clean_name <- "17:0"; out$Class <- "FA"; out$class_stub <- "FA"
     out$lm_category <- "FA"; out$lm_category_name <- "Fatty Acyls"
@@ -275,6 +284,8 @@ annotate_lipid <- function(molecules,
     return(out)
   }
 
+  # Normalize: "Lyso PE" -> "LPE", number-first -> class-first,
+  # C-prefix on chains, spaces between chains -> slash
   x <- gsub("(?i)lyso\\s*([A-Z])", "L\\1", x, perl = TRUE)
   if (grepl("^\\d+:\\d+", x))
     x <- sub("^([^[:blank:]]+)[[:blank:]]+(.+)$", "\\2 \\1", x)
@@ -285,6 +296,7 @@ annotate_lipid <- function(molecules,
   x <- gsub("(\\d+:\\d+)-(?=[dmt]?\\d+:\\d+)", "\\1/", x, perl = TRUE)
   out$clean_name <- x
 
+  # Split class and chains
   m_p <- regmatches(x, regexec(
     "^([A-Za-z][A-Za-z0-9-]*)\\s*\\((.+)\\)\\s*$", x, perl = TRUE))[[1]]
   if (length(m_p) == 3) {
@@ -300,6 +312,7 @@ annotate_lipid <- function(molecules,
   }
   class_raw <- trimws(class_raw)
 
+  # LIPID MAPS classification lookup
   tbl <- .LM_CLASS_TABLE
   idx <- match(class_raw, tbl$abbrev)
   if (!is.na(idx)) {
@@ -312,12 +325,14 @@ annotate_lipid <- function(molecules,
   out$class_stub <- class_raw
   out$is_lyso    <- grepl("^L[A-Z]", class_raw) && !class_raw %in% c("LacCer")
 
+  # Parse chains
   chains_str <- trimws(chains_raw)
   if (nchar(chains_str) == 0) {
     out$annotation_level <- "species"; out$n_chains <- 0
     out$total_cl <- 0; out$total_cs <- 0; return(out)
   }
 
+  # Ether linkage prefix: O- (alkyl) or P- (alkenyl/plasmalogen)
   eth_m <- regmatches(chains_str, regexpr("^([OP])-", chains_str, perl = TRUE))
   if (length(eth_m) > 0 && nchar(eth_m) > 0) {
     out$ether_link <- substr(eth_m, 1, 1); out$is_ether <- TRUE
@@ -328,6 +343,8 @@ annotate_lipid <- function(molecules,
   chain_parts <- trimws(strsplit(chains_str, "/")[[1]])
   chain_parts <- chain_parts[seq_len(min(length(chain_parts), 4))]
   n <- length(chain_parts)
+
+  # Annotation level: species (sum composition) vs molecular_species (chain-resolved)
   out$is_ambig         <- (n == 1 && !out$is_lyso)
   out$annotation_level <- if (out$is_ambig) "species" else "molecular_species"
 
@@ -336,6 +353,7 @@ annotate_lipid <- function(molecules,
                  sphingoid_prefix = NA_character_, hydroxyl_n = NA_real_)
   while (length(parsed) < 4) parsed[[length(parsed) + 1]] <- empty
 
+  # Sphingoid base prefix (SP category): d = dihydroxy, m = monohydroxy, t = trihydroxy
   if (!is.na(out$lm_category) && out$lm_category == "SP") {
     sph <- parsed[[1]]$sphingoid_prefix
     out$sphingoid_prefix <- if (!is.na(sph)) sph else sphingoid_default
@@ -363,19 +381,23 @@ annotate_lipid <- function(molecules,
 
 
 # =============================================================================
-# PARSER DE CADENA INDIVIDUAL
+# INDIVIDUAL CHAIN PARSER
+# Handles: "18:1", "d18:1", "m18:0", "t18:0", "18:1(9Z)", "18:1(d7)",
+#          "22:6(4Z,7Z,...)", "9-O-16:0" (FAHFA ester position), "0:0"
 # =============================================================================
 
 .parse_lm_chain <- function(s) {
   s <- trimws(s)
+  # Detect sphingoid base prefix: d = dihydroxy, m = monohydroxy, t = trihydroxy
   sph_m   <- regmatches(s, regexpr("^([dmt])(?=\\d)", s, perl = TRUE))
   sph_pfx <- if (length(sph_m) > 0 && nchar(sph_m) > 0) sph_m else NA_character_
   hydroxy <- switch(if (!is.na(sph_pfx)) sph_pfx else "",
                     "d" = 2, "m" = 1, "t" = 3, NA_real_)
-  s_num <- sub("^[dmt](?=\\d)", "", s,     perl = TRUE)
-  s_num <- sub("^C(?=\\d)",     "", s_num, perl = TRUE)
-  s_num <- sub("\\(.*\\)",      "", s_num)
-  s_num <- sub("^\\d+-[OP]-",   "", s_num)
+  # Strip prefixes for numeric parsing
+  s_num <- sub("^[dmt](?=\\d)", "", s,     perl = TRUE)  # sphingoid prefix
+  s_num <- sub("^C(?=\\d)",     "", s_num, perl = TRUE)  # legacy C-prefix
+  s_num <- sub("\\(.*\\)",      "", s_num)               # annotations: (9Z), (d7)
+  s_num <- sub("^\\d+-[OP]-",   "", s_num)               # FAHFA ester position: 9-O-
   s_num <- trimws(sub("[^0-9:].*$", "", s_num))
   m <- regmatches(s_num, regexec("^(\\d+):(\\d+)", s_num))[[1]]
   list(raw = s,
@@ -386,23 +408,27 @@ annotate_lipid <- function(molecules,
 
 
 # =============================================================================
-# SHORTHAND CANÓNICO
+# CANONICAL SHORTHAND BUILDER (Liebisch et al. 2020)
 # =============================================================================
 
 .build_shorthand <- function(row, sn_confirmed = FALSE, lyso_explicit = FALSE) {
   cls <- row$Class
   if (is.na(cls)) return(NA_character_)
+  # Lipids with no chains (Cholesterol, bile acids, etc.)
   if (!is.na(row$n_chains) && row$n_chains == 0) return(cls)
   chain_strs   <- .format_chains(row)
   ether_prefix <- if (!is.na(row$ether_link)) paste0(row$ether_link, "-") else ""
+  # Lyso: LPC(18:1) or LPC(18:1/0:0) if lyso_explicit
   if (isTRUE(row$is_lyso)) {
     inner <- if (lyso_explicit && !is.na(chain_strs[1])) {
       paste0(ether_prefix, chain_strs[1], "/0:0")
     } else { paste0(ether_prefix, chain_strs[1]) }
     return(paste0(cls, "(", inner, ")"))
   }
+  # Species level (sum composition): PC(34:1)
   if (isTRUE(row$is_ambig))
     return(paste0(cls, "(", ether_prefix, chain_strs[1], ")"))
+  # Molecular species level: PC(16:0/18:1)
   valid <- chain_strs[!is.na(chain_strs)]
   inner <- if (sn_confirmed) {
     paste0(ether_prefix, paste(mapply(function(ch, n) paste0("sn", n, "=", ch),
@@ -410,6 +436,11 @@ annotate_lipid <- function(molecules,
   } else { paste0(ether_prefix, paste(valid, collapse = "/")) }
   paste0(cls, "(", inner, ")")
 }
+
+
+# =============================================================================
+# CHAIN FORMATTER — canonical shorthand per chain
+# =============================================================================
 
 .format_chains <- function(row) {
   raw_chains <- c(row$chain1, row$chain2, row$chain3, row$chain4)
@@ -420,19 +451,23 @@ annotate_lipid <- function(molecules,
     raw <- raw_chains[i]
     if (is.na(raw)) { result[i] <- NA_character_; next }
     s <- trimws(raw)
+    # Preserve canonical position annotations: (9Z), (4Z,7Z,...), (d7) for ISTD
     annot <- ""
     annot_m <- regmatches(s, regexpr("\\([^)]+\\)", s))
     if (length(annot_m) > 0 && nchar(annot_m) > 0 &&
         grepl("^\\(([dmt]\\d+|\\d+[EZ](,\\d+[EZ])*)\\)$", annot_m))
       annot <- annot_m
+    # Sphingoid prefix for chain1 in SP (with mammalian default)
     sph_pfx <- ""
     if (!is.na(row$lm_category) && row$lm_category == "SP" && i == 1)
       sph_pfx <- if (!is.na(row$sphingoid_prefix)) row$sphingoid_prefix else ""
+    # FA estolides (FAHFA): preserve ester position "9-O-16:0"
     if (!is.na(row$lm_category) && row$lm_category == "FA" &&
         grepl("^\\d+-[OP]-", s)) {
       result[i] <- trimws(sub("^C(?=\\d)", "", sub("\\(.*\\)", "", s), perl = TRUE))
       next
     }
+    # Reconstruct clean chain string
     s_num <- sub("^[dmt](?=\\d)", "", s,     perl = TRUE)
     s_num <- sub("^C(?=\\d)",     "", s_num, perl = TRUE)
     s_num <- sub("\\(.*\\)",      "", s_num)
@@ -446,4 +481,10 @@ annotate_lipid <- function(molecules,
   result
 }
 
+
+# =============================================================================
+# UTILITIES
+# =============================================================================
+
+# Null-coalescing operator: returns b if a is NA or length 0
 `%||%` <- function(a, b) if (length(a) > 0 && !is.na(a[1])) a else b
