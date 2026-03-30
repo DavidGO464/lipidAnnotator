@@ -1,0 +1,449 @@
+# =============================================================================
+# annotate_lipid.R
+#
+# Parser universal de nombres de lípidos con clasificación LIPID MAPS canónica
+# y generación opcional de shorthand notation.
+#
+# Referencias:
+#   Liebisch G et al. J Lipid Res. 2020;61(12):1539-1555. PMID: 33037133
+#   Conroy MJ et al. Nucleic Acids Res. 2024;52(D1):D1677-D1682. PMID: 37855672
+#   Fahy E et al. J Lipid Res. 2009;50 Suppl:S9-14. PMID: 19098281
+#
+# Uso:
+#   df <- annotate_lipid(lipid_names)                          # compact (default)
+#   df <- annotate_lipid(lipid_names, detail = "standard")
+#   df <- annotate_lipid(lipid_names, detail = "full")
+#   df <- annotate_lipid(lipid_names, shorthand = TRUE)
+#   df <- annotate_lipid(lipid_names, detail = "full", shorthand = TRUE)
+# =============================================================================
+
+
+# =============================================================================
+# COLUMNAS POR NIVEL DE DETALLE
+# =============================================================================
+
+.LM_COLS <- list(
+
+  compact = c(
+    "Molecule",
+    "Class",
+    "is_lyso",
+    "is_ambig",
+    "not_matched",
+    "chain1", "chain2", "chain3", "chain4",
+    "l_1", "s_1",
+    "l_2", "s_2",
+    "l_3", "s_3",
+    "l_4", "s_4",
+    "total_cl",
+    "total_cs",
+    "n_chains"
+  ),
+
+  standard = c(
+    "Molecule",
+    "Class",
+    "lm_category",
+    "lm_class_id",
+    "annotation_level",
+    "is_lyso",
+    "is_ambig",
+    "is_ether",
+    "is_plasmalogen",
+    "is_istd",
+    "not_matched",
+    "sphingoid_prefix",
+    "chain1", "chain2", "chain3", "chain4",
+    "l_1", "s_1",
+    "l_2", "s_2",
+    "l_3", "s_3",
+    "l_4", "s_4",
+    "total_cl",
+    "total_cs",
+    "n_chains"
+  ),
+
+  full = c(
+    "Molecule",
+    "clean_name",
+    "Class",
+    "class_stub",
+    "lm_category",
+    "lm_category_name",
+    "lm_class_id",
+    "lm_class_name",
+    "headgroup",
+    "annotation_level",
+    "is_lyso",
+    "is_ambig",
+    "is_ether",
+    "is_plasmalogen",
+    "is_istd",
+    "not_matched",
+    "ether_link",
+    "sphingoid_prefix",
+    "hydroxyl_base",
+    "chain1", "chain2", "chain3", "chain4",
+    "l_1", "s_1",
+    "l_2", "s_2",
+    "l_3", "s_3",
+    "l_4", "s_4",
+    "total_cl",
+    "total_cs",
+    "n_chains"
+  )
+)
+
+
+# =============================================================================
+# FUNCIÓN PRINCIPAL
+# =============================================================================
+
+annotate_lipid <- function(molecules,
+                           detail            = c("compact", "standard", "full"),
+                           shorthand         = FALSE,
+                           sn_confirmed      = FALSE,
+                           lyso_explicit     = FALSE,
+                           no_match          = c("warn", "remove", "ignore"),
+                           sphingoid_default = "d") {
+
+  detail   <- match.arg(detail)
+  no_match <- match.arg(no_match)
+  molecules <- unique(as.character(trimws(molecules)))
+
+  results <- lapply(molecules, .parse_lm_single,
+                    sphingoid_default = sphingoid_default)
+  df <- do.call(rbind, lapply(results, as.data.frame, stringsAsFactors = FALSE))
+
+  num_cols <- c("l_1", "s_1", "l_2", "s_2", "l_3", "s_3", "l_4", "s_4",
+                "total_cl", "total_cs", "n_chains", "hydroxyl_base")
+  for (col in num_cols) df[[col]] <- suppressWarnings(as.numeric(df[[col]]))
+
+  if (any(df$not_matched)) {
+    bad <- df$Molecule[df$not_matched]
+    if (no_match == "warn") {
+      warning("Lipid names not parsed:\n  ", paste(bad, collapse = ", "))
+    } else if (no_match == "remove") {
+      df <- df[!df$not_matched, ]
+    }
+  }
+
+  if (shorthand) {
+    df$shorthand_lm <- vapply(
+      seq_len(nrow(df)),
+      function(i) {
+        row <- df[i, ]
+        if (isTRUE(row$not_matched) || is.na(row$Class)) return(NA_character_)
+        .build_shorthand(row,
+                         sn_confirmed  = sn_confirmed,
+                         lyso_explicit = lyso_explicit)
+      },
+      character(1)
+    )
+  }
+
+  cols <- .LM_COLS[[detail]]
+  if (shorthand) cols <- c(cols, "shorthand_lm")
+
+  df[, cols, drop = FALSE]
+}
+
+
+# =============================================================================
+# TABLA MAESTRA DE CLASES LIPID MAPS
+# =============================================================================
+
+.LM_CLASS_TABLE <- local({
+
+  cls <- function(abbrev, cat, cat_name, cls_id, cls_name,
+                  n_chains, headgroup = NA_character_, sphingoid = FALSE) {
+    data.frame(
+      abbrev             = abbrev,
+      lm_category        = cat,
+      lm_category_name   = cat_name,
+      lm_class_id        = cls_id,
+      lm_class_name      = cls_name,
+      n_chains_expected  = n_chains,
+      headgroup          = headgroup,
+      sphingoid_base_req = sphingoid,
+      stringsAsFactors   = FALSE
+    )
+  }
+
+  rbind(
+    cls("FA",      "FA", "Fatty Acyls", "FA0101", "Fatty acids",                  1),
+    cls("FAHFA",   "FA", "Fatty Acyls", "FA0701", "Fatty acid estolides",         2),
+    cls("FAL",     "FA", "Fatty Acyls", "FA0601", "Fatty aldehydes",              1),
+    cls("FOH",     "FA", "Fatty Acyls", "FA0501", "Fatty alcohols",               1),
+    cls("CAR",     "FA", "Fatty Acyls", "FA0701", "Acylcarnitines",               1),
+    cls("NAE",     "FA", "Fatty Acyls", "FA0801", "N-Acylethanolamines",          1),
+    cls("MG",      "GL", "Glycerolipids", "GL0101", "Monoradylglycerols",         1),
+    cls("DG",      "GL", "Glycerolipids", "GL0201", "Diradylglycerols",           2),
+    cls("TG",      "GL", "Glycerolipids", "GL0301", "Triradylglycerols",          3),
+    cls("MGDG",    "GL", "Glycerolipids", "GL0501", "Monogalactosyldiacylglycerols", 2),
+    cls("DGDG",    "GL", "Glycerolipids", "GL0502", "Digalactosyldiacylglycerols",   2),
+    cls("PA",      "GP", "Glycerophospholipids", "GP1001", "Phosphatidic acids",                 2, "phosphate"),
+    cls("LPA",     "GP", "Glycerophospholipids", "GP1002", "Lysophosphatidic acids",             1, "phosphate"),
+    cls("PC",      "GP", "Glycerophospholipids", "GP0101", "Phosphatidylcholines",               2, "choline"),
+    cls("LPC",     "GP", "Glycerophospholipids", "GP0105", "Lysophosphatidylcholines",           1, "choline"),
+    cls("PE",      "GP", "Glycerophospholipids", "GP0201", "Phosphatidylethanolamines",          2, "ethanolamine"),
+    cls("LPE",     "GP", "Glycerophospholipids", "GP0205", "Lysophosphatidylethanolamines",      1, "ethanolamine"),
+    cls("PG",      "GP", "Glycerophospholipids", "GP0401", "Phosphatidylglycerols",              2, "glycerol"),
+    cls("LPG",     "GP", "Glycerophospholipids", "GP0405", "Lysophosphatidylglycerols",          1, "glycerol"),
+    cls("PI",      "GP", "Glycerophospholipids", "GP0601", "Phosphatidylinositols",              2, "inositol"),
+    cls("LPI",     "GP", "Glycerophospholipids", "GP0605", "Lysophosphatidylinositols",          1, "inositol"),
+    cls("PS",      "GP", "Glycerophospholipids", "GP0301", "Phosphatidylserines",                2, "serine"),
+    cls("LPS",     "GP", "Glycerophospholipids", "GP0305", "Lysophosphatidylserines",            1, "serine"),
+    cls("PIP",     "GP", "Glycerophospholipids", "GP0701", "Phosphoinositolphosphates",          2, "inositolP"),
+    cls("PIP2",    "GP", "Glycerophospholipids", "GP0702", "Bisphosphoinositolphosphates",       2, "inositolPP"),
+    cls("PIP3",    "GP", "Glycerophospholipids", "GP0703", "Trisphosphoinositolphosphates",      2, "inositolPPP"),
+    cls("CL",      "GP", "Glycerophospholipids", "GP1201", "Cardiolipins",                      4, "glycerophosphate"),
+    cls("BMP",     "GP", "Glycerophospholipids", "GP0401", "Bis(monoacylglycero)phosphates",     2, "glycerol"),
+    cls("LBPA",    "GP", "Glycerophospholipids", "GP0401", "Lysobiophosphatidic acids",          2, "glycerol"),
+    cls("PEtOH",   "GP", "Glycerophospholipids", "GP0210", "Phosphatidylethanol",                2, "ethanol"),
+    cls("PThr",    "GP", "Glycerophospholipids", "GP0901", "Phosphatidylthreonines",             2, "threonine"),
+    cls("Cer",     "SP", "Sphingolipids", "SP0201", "Ceramides",                  2, NA_character_, TRUE),
+    cls("SM",      "SP", "Sphingolipids", "SP0301", "Sphingomyelins",             2, "phosphocholine", TRUE),
+    cls("HexCer",  "SP", "Sphingolipids", "SP0501", "Hexosylceramides",           2, "hexose",      TRUE),
+    cls("Hex2Cer", "SP", "Sphingolipids", "SP0601", "Dihexosylceramides",         2, "hexose2",     TRUE),
+    cls("GlcCer",  "SP", "Sphingolipids", "SP0501", "Glucosylceramides",          2, "glucose",     TRUE),
+    cls("GalCer",  "SP", "Sphingolipids", "SP0501", "Galactosylceramides",        2, "galactose",   TRUE),
+    cls("LacCer",  "SP", "Sphingolipids", "SP0601", "Lactosylceramides",          2, "lactose",     TRUE),
+    cls("GM3",     "SP", "Sphingolipids", "SP0603", "Ganglioside GM3",            2, "ganglioside", TRUE),
+    cls("GM2",     "SP", "Sphingolipids", "SP0604", "Ganglioside GM2",            2, "ganglioside", TRUE),
+    cls("GM1",     "SP", "Sphingolipids", "SP0605", "Ganglioside GM1",            2, "ganglioside", TRUE),
+    cls("GD1",     "SP", "Sphingolipids", "SP0606", "Ganglioside GD1",            2, "ganglioside", TRUE),
+    cls("GD3",     "SP", "Sphingolipids", "SP0607", "Ganglioside GD3",            2, "ganglioside", TRUE),
+    cls("GT3",     "SP", "Sphingolipids", "SP0608", "Ganglioside GT3",            2, "ganglioside", TRUE),
+    cls("Sph",     "SP", "Sphingolipids", "SP0101", "Sphingoid bases",            1, NA_character_, TRUE),
+    cls("S1P",     "SP", "Sphingolipids", "SP0105", "Sphingoid base-1-phosphates",1, "phosphate",   TRUE),
+    cls("PE-Cer",  "SP", "Sphingolipids", "SP0201", "PE-ceramides",               2, "ethanolamine", TRUE),
+    cls("PI-Cer",  "SP", "Sphingolipids", "SP0201", "PI-ceramides",               2, "inositol",    TRUE),
+    cls("PA-Cer",  "SP", "Sphingolipids", "SP0201", "PA-ceramides",               2, "phosphate",   TRUE),
+    cls("deoxyCer","SP", "Sphingolipids", "SP0202", "1-Deoxy ceramides",          2, NA_character_, TRUE),
+    cls("Chol",    "ST", "Sterol Lipids", "ST0101", "Cholesterol",                0),
+    cls("CE",      "ST", "Sterol Lipids", "ST0102", "Cholesterol esters",         1, "cholesterol"),
+    cls("FC",      "ST", "Sterol Lipids", "ST0101", "Free cholesterol",           0),
+    cls("BA",      "ST", "Sterol Lipids", "ST0401", "Bile acids",                 0),
+    cls("CoQ",     "PR", "Prenol Lipids", "PR0603", "Ubiquinones",                0)
+  )
+})
+
+
+# =============================================================================
+# PARSER INTERNO
+# =============================================================================
+
+.parse_lm_single <- function(mol, sphingoid_default = "d") {
+
+  original <- mol
+  x        <- trimws(mol)
+
+  out <- list(
+    Molecule = original, clean_name = NA_character_, not_matched = FALSE,
+    annotation_level = NA_character_, is_ambig = FALSE, is_lyso = FALSE,
+    is_istd = FALSE, is_ether = FALSE, is_plasmalogen = FALSE,
+    lm_category = NA_character_, lm_category_name = NA_character_,
+    lm_class_id = NA_character_, lm_class_name = NA_character_,
+    Class = NA_character_, class_stub = NA_character_, headgroup = NA_character_,
+    ether_link = NA_character_, sphingoid_prefix = NA_character_,
+    hydroxyl_base = NA_real_,
+    chain1 = NA_character_, chain2 = NA_character_,
+    chain3 = NA_character_, chain4 = NA_character_,
+    l_1 = NA_real_, s_1 = NA_real_, l_2 = NA_real_, s_2 = NA_real_,
+    l_3 = NA_real_, s_3 = NA_real_, l_4 = NA_real_, s_4 = NA_real_,
+    total_cl = NA_real_, total_cs = NA_real_, n_chains = NA_real_
+  )
+
+  # ISTD: (d7), -d7 son deuterio; d18:1 NO (prefijo sphingoid)
+  if (grepl("\\(d\\d+\\)|-d\\d+(?!:)|\\(\\d+,\\d+-d\\d+\\)", x, perl = TRUE)) {
+    out$is_istd <- TRUE
+  }
+
+  x <- gsub("[\\[\\]]", "", x, perl = TRUE)
+  x <- sub("\\s+NEG$", "", x)
+  x <- sub("\\s+ID\\d+$", "", x)
+  x <- sub("15-MHDA", "17:0", x)
+
+  if (trimws(x) == "17:0") {
+    out$clean_name <- "17:0"; out$Class <- "FA"; out$class_stub <- "FA"
+    out$lm_category <- "FA"; out$lm_category_name <- "Fatty Acyls"
+    out$lm_class_id <- "FA0101"; out$lm_class_name <- "Fatty acids"
+    out$annotation_level <- "species"; out$is_ambig <- TRUE
+    out$chain1 <- "17:0"; out$l_1 <- 17; out$s_1 <- 0
+    out$total_cl <- 17; out$total_cs <- 0; out$n_chains <- 1
+    return(out)
+  }
+
+  x <- gsub("(?i)lyso\\s*([A-Z])", "L\\1", x, perl = TRUE)
+  if (grepl("^\\d+:\\d+", x))
+    x <- sub("^([^[:blank:]]+)[[:blank:]]+(.+)$", "\\2 \\1", x)
+  x <- gsub("(?<=[(/\\s,]|^)C(\\d+:\\d+)", "\\1", x, perl = TRUE)
+  chain_sp <- "(\\d+:\\d+[^[:space:]/]*)[[:space:]]+((?:[OP]-)?[dmt]?\\d+:\\d+)"
+  x <- gsub(chain_sp, "\\1/\\2", x)
+  x <- gsub(chain_sp, "\\1/\\2", x)
+  x <- gsub("(\\d+:\\d+)-(?=[dmt]?\\d+:\\d+)", "\\1/", x, perl = TRUE)
+  out$clean_name <- x
+
+  m_p <- regmatches(x, regexec(
+    "^([A-Za-z][A-Za-z0-9-]*)\\s*\\((.+)\\)\\s*$", x, perl = TRUE))[[1]]
+  if (length(m_p) == 3) {
+    class_raw <- m_p[2]; chains_raw <- m_p[3]
+  } else {
+    m_s <- regmatches(x, regexec(
+      "^([A-Za-z][A-Za-z0-9-]*)\\s+(.+)$", x, perl = TRUE))[[1]]
+    if (length(m_s) == 3) {
+      class_raw <- m_s[2]; chains_raw <- m_s[3]
+    } else {
+      class_raw <- x; chains_raw <- ""
+    }
+  }
+  class_raw <- trimws(class_raw)
+
+  tbl <- .LM_CLASS_TABLE
+  idx <- match(class_raw, tbl$abbrev)
+  if (!is.na(idx)) {
+    out$lm_category <- tbl$lm_category[idx]; out$lm_category_name <- tbl$lm_category_name[idx]
+    out$lm_class_id <- tbl$lm_class_id[idx]; out$lm_class_name <- tbl$lm_class_name[idx]
+    out$headgroup <- tbl$headgroup[idx]; out$Class <- class_raw
+  } else {
+    out$lm_category <- "Unknown"; out$lm_category_name <- "Unknown"; out$Class <- class_raw
+  }
+  out$class_stub <- class_raw
+  out$is_lyso    <- grepl("^L[A-Z]", class_raw) && !class_raw %in% c("LacCer")
+
+  chains_str <- trimws(chains_raw)
+  if (nchar(chains_str) == 0) {
+    out$annotation_level <- "species"; out$n_chains <- 0
+    out$total_cl <- 0; out$total_cs <- 0; return(out)
+  }
+
+  eth_m <- regmatches(chains_str, regexpr("^([OP])-", chains_str, perl = TRUE))
+  if (length(eth_m) > 0 && nchar(eth_m) > 0) {
+    out$ether_link <- substr(eth_m, 1, 1); out$is_ether <- TRUE
+    out$is_plasmalogen <- substr(eth_m, 1, 1) == "P"
+    chains_str <- sub("^[OP]-", "", chains_str)
+  }
+
+  chain_parts <- trimws(strsplit(chains_str, "/")[[1]])
+  chain_parts <- chain_parts[seq_len(min(length(chain_parts), 4))]
+  n <- length(chain_parts)
+  out$is_ambig         <- (n == 1 && !out$is_lyso)
+  out$annotation_level <- if (out$is_ambig) "species" else "molecular_species"
+
+  parsed <- lapply(chain_parts, .parse_lm_chain)
+  empty  <- list(raw = NA_character_, length = NA_real_, unsat = NA_real_,
+                 sphingoid_prefix = NA_character_, hydroxyl_n = NA_real_)
+  while (length(parsed) < 4) parsed[[length(parsed) + 1]] <- empty
+
+  if (!is.na(out$lm_category) && out$lm_category == "SP") {
+    sph <- parsed[[1]]$sphingoid_prefix
+    out$sphingoid_prefix <- if (!is.na(sph)) sph else sphingoid_default
+    out$hydroxyl_base    <- switch(
+      if (!is.na(out$sphingoid_prefix)) out$sphingoid_prefix else "",
+      "d" = 2, "m" = 1, "t" = 3, NA_real_)
+  }
+
+  out$chain1 <- if (n >= 1) chain_parts[1] else NA_character_
+  out$chain2 <- if (n >= 2) chain_parts[2] else NA_character_
+  out$chain3 <- if (n >= 3) chain_parts[3] else NA_character_
+  out$chain4 <- if (n >= 4) chain_parts[4] else NA_character_
+  out$l_1 <- parsed[[1]]$length; out$s_1 <- parsed[[1]]$unsat
+  out$l_2 <- parsed[[2]]$length; out$s_2 <- parsed[[2]]$unsat
+  out$l_3 <- parsed[[3]]$length; out$s_3 <- parsed[[3]]$unsat
+  out$l_4 <- parsed[[4]]$length; out$s_4 <- parsed[[4]]$unsat
+  out$n_chains <- n
+  out$total_cl <- sum(parsed[[1]]$length, parsed[[2]]$length,
+                      parsed[[3]]$length, parsed[[4]]$length, na.rm = TRUE)
+  out$total_cs <- sum(parsed[[1]]$unsat, parsed[[2]]$unsat,
+                      parsed[[3]]$unsat, parsed[[4]]$unsat, na.rm = TRUE)
+  if (is.na(out$l_1) && out$n_chains > 0) out$not_matched <- TRUE
+  out
+}
+
+
+# =============================================================================
+# PARSER DE CADENA INDIVIDUAL
+# =============================================================================
+
+.parse_lm_chain <- function(s) {
+  s <- trimws(s)
+  sph_m   <- regmatches(s, regexpr("^([dmt])(?=\\d)", s, perl = TRUE))
+  sph_pfx <- if (length(sph_m) > 0 && nchar(sph_m) > 0) sph_m else NA_character_
+  hydroxy <- switch(if (!is.na(sph_pfx)) sph_pfx else "",
+                    "d" = 2, "m" = 1, "t" = 3, NA_real_)
+  s_num <- sub("^[dmt](?=\\d)", "", s,     perl = TRUE)
+  s_num <- sub("^C(?=\\d)",     "", s_num, perl = TRUE)
+  s_num <- sub("\\(.*\\)",      "", s_num)
+  s_num <- sub("^\\d+-[OP]-",   "", s_num)
+  s_num <- trimws(sub("[^0-9:].*$", "", s_num))
+  m <- regmatches(s_num, regexec("^(\\d+):(\\d+)", s_num))[[1]]
+  list(raw = s,
+       length = if (length(m) == 3) as.numeric(m[2]) else NA_real_,
+       unsat  = if (length(m) == 3) as.numeric(m[3]) else NA_real_,
+       sphingoid_prefix = sph_pfx, hydroxyl_n = hydroxy)
+}
+
+
+# =============================================================================
+# SHORTHAND CANÓNICO
+# =============================================================================
+
+.build_shorthand <- function(row, sn_confirmed = FALSE, lyso_explicit = FALSE) {
+  cls <- row$Class
+  if (is.na(cls)) return(NA_character_)
+  if (!is.na(row$n_chains) && row$n_chains == 0) return(cls)
+  chain_strs   <- .format_chains(row)
+  ether_prefix <- if (!is.na(row$ether_link)) paste0(row$ether_link, "-") else ""
+  if (isTRUE(row$is_lyso)) {
+    inner <- if (lyso_explicit && !is.na(chain_strs[1])) {
+      paste0(ether_prefix, chain_strs[1], "/0:0")
+    } else { paste0(ether_prefix, chain_strs[1]) }
+    return(paste0(cls, "(", inner, ")"))
+  }
+  if (isTRUE(row$is_ambig))
+    return(paste0(cls, "(", ether_prefix, chain_strs[1], ")"))
+  valid <- chain_strs[!is.na(chain_strs)]
+  inner <- if (sn_confirmed) {
+    paste0(ether_prefix, paste(mapply(function(ch, n) paste0("sn", n, "=", ch),
+                                      valid, seq_along(valid)), collapse = "/"))
+  } else { paste0(ether_prefix, paste(valid, collapse = "/")) }
+  paste0(cls, "(", inner, ")")
+}
+
+.format_chains <- function(row) {
+  raw_chains <- c(row$chain1, row$chain2, row$chain3, row$chain4)
+  lens   <- c(row$l_1, row$l_2, row$l_3, row$l_4)
+  unsats <- c(row$s_1, row$s_2, row$s_3, row$s_4)
+  result <- vector("character", 4)
+  for (i in seq_len(4)) {
+    raw <- raw_chains[i]
+    if (is.na(raw)) { result[i] <- NA_character_; next }
+    s <- trimws(raw)
+    annot <- ""
+    annot_m <- regmatches(s, regexpr("\\([^)]+\\)", s))
+    if (length(annot_m) > 0 && nchar(annot_m) > 0 &&
+        grepl("^\\(([dmt]\\d+|\\d+[EZ](,\\d+[EZ])*)\\)$", annot_m))
+      annot <- annot_m
+    sph_pfx <- ""
+    if (!is.na(row$lm_category) && row$lm_category == "SP" && i == 1)
+      sph_pfx <- if (!is.na(row$sphingoid_prefix)) row$sphingoid_prefix else ""
+    if (!is.na(row$lm_category) && row$lm_category == "FA" &&
+        grepl("^\\d+-[OP]-", s)) {
+      result[i] <- trimws(sub("^C(?=\\d)", "", sub("\\(.*\\)", "", s), perl = TRUE))
+      next
+    }
+    s_num <- sub("^[dmt](?=\\d)", "", s,     perl = TRUE)
+    s_num <- sub("^C(?=\\d)",     "", s_num, perl = TRUE)
+    s_num <- sub("\\(.*\\)",      "", s_num)
+    s_num <- sub("^\\d+-[OP]-",   "", s_num)
+    s_num <- trimws(sub("[^0-9:].*$", "", s_num))
+    nm <- regmatches(s_num, regexec("^(\\d+):(\\d+)", s_num))[[1]]
+    result[i] <- if (length(nm) == 3) paste0(sph_pfx, nm[2], ":", nm[3], annot)
+    else if (!is.na(lens[i]) && !is.na(unsats[i])) paste0(sph_pfx, lens[i], ":", unsats[i])
+    else NA_character_
+  }
+  result
+}
+
+`%||%` <- function(a, b) if (length(a) > 0 && !is.na(a[1])) a else b
