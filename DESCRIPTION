@@ -1,15 +1,19 @@
 Package: lipidAnnotator
-Title: What the Package Does (One Line, Title Case)
+Title: Parse and Annotate Lipid Names with LIPID MAPS Classification
 Version: 0.0.0.9000
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+    person("David", "Guardamino Ojeda", 
+           email = "david.guardamino@gmail.com", 
+           role = c("aut", "cre"))
+Description: Parses lipid names in any format and annotates them with LIPID MAPS 
+    canonical classification, shorthand notation per Liebisch et al. (2020), 
+    and structural metadata including ether linkage, sphingoid base prefix, 
+    and annotation level.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
-Suggests: 
-    testthat (>= 3.0.0)
+Suggests: testthat (>= 3.0.0)
 Config/testthat/edition: 3
 URL: https://github.com/DavidGO464/lipidAnnotator
 BugReports: https://github.com/DavidGO464/lipidAnnotator/issues
