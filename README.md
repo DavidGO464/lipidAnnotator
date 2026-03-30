@@ -32,6 +32,10 @@ chain-level metadata, and optional shorthand notation.
 | `CL 18:1/18:1/18:1/18:1` | Cardiolipin (4 chains) |
 | `FAHFA 18:1/9-O-16:0` | Fatty acid estolide |
 | `15-MHDA` | Trivial name → FA 17:0 |
+| `15-HETE` | Eicosanoid mediator |
+| `Resolvin D1` | Specialized pro-resolving mediator |
+| `WE 16:0/18:1` | Wax ester |
+| `CoA 16:0` | Acyl-CoA |
 
 ---
 
@@ -51,7 +55,8 @@ lipids <- c(
   "PC O-18:1/20:4", "PE P-18:0/22:6",
   "PE-Cer 20:1/16:0", "HexCer 18:1/16:0",
   "TG(16:0/18:1/18:1)", "Cer d18:1/16:0",
-  "Lyso PE 18:1(d7)", "CL 18:1/18:1/18:1/18:1"
+  "Lyso PE 18:1(d7)", "CL 18:1/18:1/18:1/18:1",
+  "15-HETE", "Resolvin D1", "WE 16:0/18:1", "CoA 16:0"
 )
 
 # Compact — equivalent to lipidR output (default)
@@ -82,6 +87,7 @@ annotate_lipid(lipids, detail = "full", shorthand = TRUE)
 - **ISTD detection** — `18:1(d7)` → `is_istd = TRUE`; `d18:1` → `is_istd = FALSE`
 - **Shorthand notation** — canonical output per Liebisch et al. 2020: `HexCer 18:1/16:0` → `HexCer(d18:1/16:0)`
 - **LIPID MAPS ontology** — category (FA/GL/GP/SP/ST), class ID (e.g. `GP0101`), class name, headgroup
+- **Lipid mediator parsing** — trivial names with positional notation: `15-HETE`, `12(13)-EpOME`, `Resolvin D1`, `PGE2`, `LTB4`
 
 ---
 
@@ -94,10 +100,10 @@ are detected automatically across all supported classes.
 
 | Category | Classes |
 |---|---|
-| Fatty Acyls (FA) | FA, FAHFA, FAL, FOH, CAR, NAE |
-| Glycerolipids (GL) | MG, DG, TG, MGDG, DGDG |
-| Glycerophospholipids (GP) | PA/LPA, PC/LPC, PE/LPE, PG/LPG, PI/LPI, PS/LPS, PIP/PIP2/PIP3, CL, BMP, LBPA, PEtOH, PThr, plasmenylPC/PE |
-| Sphingolipids (SP) | Cer, SM, HexCer, Hex2Cer, GlcCer, GalCer, LacCer, GM1/2/3, GD1/GD3, GT3, Sph, S1P, Sa, So, Sa1P, So1P, PE-Cer, PI-Cer, PA-Cer, deoxyCer |
+| Fatty Acyls (FA) | FA, FAHFA, FAL, FOH, CAR, NAE, WE, CoA · Eicosanoids: HETE, HEPE, EET, DHET, OxoETE, HpETE, EpETE, HHTrE · Prostanoids: PGE2, PGD2, PGF2a, PGI2, PGB2, TXB1/2/3 · Leukotrienes: LTB4, LTC4, LTD4 · Octadecanoids: HODE, HOTrE, EpOME · SPMs: Resolvins, Maresins, Protectins, Lipoxins, HDoHE |
+| Glycerolipids (GL) | MG, DG, TG, MGDG, DGDG, SQDG, SQMG |
+| Glycerophospholipids (GP) | PA/LPA, PC/LPC, PE/LPE, PG/LPG, PI/LPI, PS/LPS, PIP/PIP2/PIP3, CL, MLCL, DLCL, BMP, LBPA, PEtOH, PThr, plasmenylPC/PE |
+| Sphingolipids (SP) | Cer, CerP, SM, LSM, HexCer, LHexCer, Hex2Cer, GlcCer, GalCer, LacCer, SHexCer, GM1/2/3, GD1/GD3, GT3, Sph, S1P, Sa, So, Sa1P, So1P, PE-Cer, PI-Cer, PA-Cer, IPC, deoxyCer |
 | Sterol Lipids (ST) | Chol, CE, FC, BA |
 | Prenol Lipids (PR) | CoQ |
 
