@@ -1,6 +1,6 @@
 Package: lipidAnnotator
 Title: Parse and Annotate Lipid Names with LIPID MAPS Classification
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R: 
     person("David", "Guardamino Ojeda", 
            email = "david.guardamino@gmail.com", 
