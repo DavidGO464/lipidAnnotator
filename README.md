@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![LIPID MAPS](https://img.shields.io/badge/nomenclature-LIPID%20MAPS%202020-green)](https://www.lipidmaps.org)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19325471.svg)](https://doi.org/10.5281/zenodo.19325471)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19336739.svg)](https://doi.org/10.5281/zenodo.19336739)
 
 > Universal lipid name parser and annotator for R, with canonical LIPID MAPS
 > classification and shorthand notation per Liebisch et al. 2020.
