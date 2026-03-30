@@ -98,14 +98,25 @@ Nomenclature follows [LIPID MAPS](https://www.lipidmaps.org/) conventions
 plasmalogens, deuterium-labeled ISTDs, and sphingoid base prefixes (d/m/t)
 are detected automatically across all supported classes.
 
-| Category | Classes |
-|---|---|
-| Fatty Acyls (FA) | FA, FAHFA, FAL, FOH, CAR, NAE, WE, CoA · Eicosanoids: HETE, HEPE, EET, DHET, OxoETE, HpETE, EpETE, HHTrE · Prostanoids: PGE2, PGD2, PGF2a, PGI2, PGB2, TXB1/2/3 · Leukotrienes: LTB4, LTC4, LTD4 · Octadecanoids: HODE, HOTrE, EpOME · SPMs: Resolvins, Maresins, Protectins, Lipoxins, HDoHE |
-| Glycerolipids (GL) | MG, DG, TG, MGDG, DGDG, SQDG, SQMG |
-| Glycerophospholipids (GP) | PA/LPA, PC/LPC, PE/LPE, PG/LPG, PI/LPI, PS/LPS, PIP/PIP2/PIP3, CL, MLCL, DLCL, BMP, LBPA, PEtOH, PThr, plasmenylPC/PE |
-| Sphingolipids (SP) | Cer, CerP, SM, LSM, HexCer, LHexCer, Hex2Cer, GlcCer, GalCer, LacCer, SHexCer, GM1/2/3, GD1/GD3, GT3, Sph, S1P, Sa, So, Sa1P, So1P, PE-Cer, PI-Cer, PA-Cer, IPC, deoxyCer |
-| Sterol Lipids (ST) | Chol, CE, FC, BA |
-| Prenol Lipids (PR) | CoQ |
+| Category | Subclass | Abbreviations |
+|---|---|---|
+| **Fatty Acyls (FA)** | Core | FA, FAHFA, FAL, FOH, CAR, NAE, WE, CoA |
+| | Eicosanoids | HETE, HEPE, EET, DHET, OxoETE, HpETE, EpETE, HHTrE |
+| | Prostanoids | PGE2, PGD2, PGF2a, PGI2, PGB2, 15d-PGJ2, TXB1/2/3 |
+| | Leukotrienes | LTB4, LTC4, LTD4 |
+| | Octadecanoids | HODE, HOTrE, EpOME |
+| | SPMs | Resolvins, Maresins, Protectins, Lipoxins, HDoHE |
+| **Glycerolipids (GL)** | | MG, DG, TG, MGDG, DGDG, SQDG, SQMG |
+| **Glycerophospholipids (GP)** | Diacyl | PA/LPA, PC/LPC, PE/LPE, PG/LPG, PI/LPI, PS/LPS |
+| | Polyphosphoinositides | PIP, PIP2, PIP3 |
+| | Other | CL, MLCL, DLCL, BMP, LBPA, PEtOH, PThr, plasmenylPC/PE |
+| **Sphingolipids (SP)** | Ceramides | Cer, CerP, deoxyCer, PE-Cer, PI-Cer, PA-Cer |
+| | Hexosylceramides | HexCer, LHexCer, Hex2Cer, GlcCer, GalCer, LacCer, SHexCer |
+| | Sphingomyelins | SM, LSM |
+| | Gangliosides | GM1/2/3, GD1/GD3, GT3 |
+| | Sphingoid bases | Sph, S1P, Sa, So, Sa1P, So1P, IPC |
+| **Sterol Lipids (ST)** | | Chol, CE, FC, BA |
+| **Prenol Lipids (PR)** | | CoQ |
 
 ---
 
